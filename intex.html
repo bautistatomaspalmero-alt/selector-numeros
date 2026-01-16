@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Selector de Números</title>
+
+<style>
+:root{
+  --bg:#0b0e1a;
+  --card:rgba(255,255,255,.08);
+  --accent:#7c8cff;
+  --danger:#ff4d4d;
+  --text:#fff;
+}
+
+*{box-sizing:border-box;font-family:system-ui}
+
+body{
+  margin:0;
+  background:linear-gradient(180deg,#0b0e1a,#141836);
+  color:var(--text);
+  min-height:100vh;
+  padding:20px;
+}
+
+.hidden{display:none}
+
+/* ===== MENU (ÚNICO CAMBIO) ===== */
+.menu{
+  max-width:600px;
+  margin:60px auto;
+  text-align:center;
+  padding:30px;
+  border-radius:26px;
+  background:linear-gradient(135deg,#1b1f3f,#0b0e1a);
+  box-shadow:0 30px 60px rgba(0,0,0,.5);
+}
+
+.menu h1{
+  font-size:34px;
+  margin-bottom:35px;
+  background:linear-gradient(90deg,#7c8cff,#aab4ff);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+.menu-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+  gap:18px;
+}
+
+.mode{
+  background:rgba(255,255,255,.1);
+  padding:28px 18px;
+  border-radius:22px;
+  cursor:pointer;
+  transition:.35s;
+  position:relative;
+  overflow:hidden;
+}
+
+.mode::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:radial-gradient(circle at top,#ffffff33,transparent);
+  opacity:0;
+  transition:.3s;
+}
+
+.mode:hover::after{opacity:1}
+
+.mode:hover{
+  transform:translateY(-6px) scale(1.05);
+  box-shadow:0 20px 40px rgba(124,140,255,.35);
+}
+
+.mode span{
+  font-size:44px;
+  display:block;
+  margin-bottom:8px;
+}
+
+/* ===== CONTROLES ===== */
+header{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:20px;
+}
+
+button,input{
+  padding:12px 16px;
+  border:none;
+  border-radius:14px;
+  font-size:16px;
+}
+
+button{
+  background:var(--accent);
+  color:white;
+  cursor:pointer;
+}
+
+/* ===== GRID ===== */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(72px,1fr));
+  gap:14px;
+}
+
+.num{
+  background:var(--card);
+  padding:18px;
+  border-radius:16px;
+  text-align:center;
+  font-weight:bold;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.num:hover{transform:scale(1.08)}
+.num.off{background:var(--danger);opacity:.65}
+
+/* ===== RULETA ===== */
+.ruleta{
+  width:220px;
+  height:220px;
+  border-radius:50%;
+  border:10px solid var(--accent);
+  margin:30px auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:36px;
+  font-weight:bold;
+  animation:spin 2s ease-out;
+}
+
+@keyframes spin{
+  from{transform:rotate(0)}
+  to{transform:rotate(1440deg)}
+}
+
+/* ===== SORTEO 3D ===== */
+.box{
+  width:220px;
+  height:160px;
+  background:linear-gradient(145deg,#1b1f3f,#0b0e1a);
+  border-radius:20px;
+  margin:40px auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:40px;
+  font-weight:bold;
+  box-shadow:0 20px 0 #070913, 0 30px 40px rgba(0,0,0,.5);
+  animation:shake .15s infinite;
+}
+
+@keyframes shake{
+  0%{transform:translateX(-2px)}
+  50%{transform:translateX(2px)}
+  100%{transform:translateX(-2px)}
+}
+
+/* ===== CONTADOR ===== */
+.counter{
+  text-align:center;
+  margin-top:40px;
+}
+
+.counter-value{
+  font-size:80px;
+  font-weight:bold;
+  margin-bottom:20px;
+}
+
+.counter button{
+  font-size:30px;
+  width:80px;
+  height:60px;
+  margin:0 10px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- MENU -->
+<div class="menu" id="menu">
+  <h1>Selector de Números</h1>
+  <div class="menu-grid">
+    <div class="mode" onclick="start('ruleta')"><span>🎡</span>Ruleta</div>
+    <div class="mode" onclick="start('sorteo')"><span>🎲</span>Sorteo</div>
+    <div class="mode" onclick="start('contador')"><span>🔢</span>Contador</div>
+    <div class="mode" onclick="start('descarte')"><span>❌</span>Descarte</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+<header>
+  <input type="number" id="start" placeholder="Desde">
+  <input type="number" id="end" placeholder="Hasta">
+  <button onclick="generate()">Generar</button>
+  <button onclick="back()">⬅ Volver</button>
+</header>
+
+<div id="content"></div>
+<div class="grid" id="grid"></div>
+</div>
+
+<script>
+let state = JSON.parse(localStorage.getItem("state")) || {
+  start:0,end:50,discarded:[],mode:null,counter:0
+};
+
+const menu=document.getElementById("menu");
+const app=document.getElementById("app");
+const grid=document.getElementById("grid");
+const content=document.getElementById("content");
+
+function save(){localStorage.setItem("state",JSON.stringify(state))}
+
+function start(m){
+  state.mode=m;
+  save();
+  menu.classList.add("hidden");
+  app.classList.remove("hidden");
+  render();
+}
+
+function back(){
+  menu.classList.remove("hidden");
+  app.classList.add("hidden");
+}
+
+function generate(){
+  state.start=+start.value;
+  state.end=+end.value;
+  if(state.mode==="descarte") state.discarded=[];
+  save(); 
+  render();
+}
+
+function render(){
+  grid.innerHTML="";
+  content.innerHTML="";
+  start.value=state.start;
+  end.value=state.end;
+
+  if(state.mode==="ruleta"){
+    const r=document.createElement("div");
+    r.className="ruleta";
+    r.textContent="🎡";
+    content.appendChild(r);
+
+    const nums=[];
+    for(let i=state.start;i<=state.end;i++) nums.push(i);
+
+    setTimeout(()=>{
+      r.textContent=nums[Math.floor(Math.random()*nums.length)];
+    },2000);
+
+    nums.forEach(n=>{
+      const d=document.createElement("div");
+      d.className="num";
+      d.textContent=n;
+      grid.appendChild(d);
+    });
+  }
+
+  if(state.mode==="sorteo"){
+    const b=document.createElement("div");
+    b.className="box";
+    b.textContent="❓";
+    content.appendChild(b);
+
+    const nums=[];
+    for(let i=state.start;i<=state.end;i++) nums.push(i);
+
+    let i=0;
+    const int=setInterval(()=>{
+      b.textContent=nums[Math.floor(Math.random()*nums.length)];
+      if(++i>25){clearInterval(int);b.style.animation="none";}
+    },100);
+  }
+
+  if(state.mode==="contador"){
+    content.innerHTML=`
+      <div class="counter">
+        <div class="counter-value" id="cv">${state.counter}</div>
+        <button onclick="chg(-1)">➖</button>
+        <button onclick="chg(1)">➕</button>
+      </div>`;
+  }
+
+  if(state.mode==="descarte"){
+    for(let i=state.start;i<=state.end;i++){
+      const n=document.createElement("div");
+      n.className="num";
+      n.textContent=i;
+
+      if(state.discarded.includes(i)) n.classList.add("off");
+
+      n.onclick=()=>{
+        if(state.discarded.includes(i)){
+          state.discarded=state.discarded.filter(x=>x!==i);
+          n.classList.remove("off");
+        }else{
+          state.discarded.push(i);
+          n.classList.add("off");
+        }
+        save();
+      };
+      grid.appendChild(n);
+    }
+  }
+}
+
+function chg(v){
+  state.counter+=v;
+  document.getElementById("cv").textContent=state.counter;
+  save();
+}
+
+if(state.mode) start(state.mode);
+</script>
+
+</body>
+</html>
